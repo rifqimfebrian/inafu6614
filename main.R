@@ -9,7 +9,6 @@
 
 #load libraries
 library(tidyverse)
-library(readxl)
 
 #get directory
 getwd()
@@ -20,6 +19,19 @@ getwd()
 uhi_us <- read_csv("Census_UHI_US_Urbanized_recalculated.csv")
 tract_income <- read_csv("ACSST5Y2017.S1902-Data.csv")
 tract_demog <- read_csv("ACSST5Y2017.S0101-Data.csv")
+tract_race <- read_csv("ACSDT5Y2017.B02001-Data.csv")
+
+################################################################################
+#DATA STRUCTURE
+#US major cities UHI
+
+
+#tract income
+
+
+#tract demographic
+str(tract_demog, give.attr = FALSE)
+
 
 ################################################################################
 #DATA CLEANSING
