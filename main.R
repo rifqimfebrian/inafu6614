@@ -7,9 +7,6 @@
 ##
 ################################################################################
 
-#install packages
-install.packages("readxl")
-
 #load libraries
 library(tidyverse)
 library(readxl)
@@ -18,7 +15,10 @@ library(readxl)
 getwd()
 
 #open census data
-uhi_us <- read_csv("data/Census_UHI_US_Urbanized_recalculated.csv")
+uhi_us <- read_csv("Census_UHI_US_Urbanized_recalculated.csv")
+tract_income <- read_csv("ACSST5Y2017.S1902-Data.csv")
+tract_demog <- read_csv("ACSST5Y2017.S0101-Data.csv")
+
 
 
 #
