@@ -37,7 +37,7 @@ meta_race <- read_csv("ACSDT5Y2017.B02001-Column-Metadata.csv") #meta data
 str(uhi_us, give.attr = FALSE)
 
 #tract income
-
+str(tract_income, give.attr = FALSE)
 
 #tract demographic
 str(tract_demog, give.attr = FALSE)
