@@ -51,7 +51,7 @@ str(tract_race, give.attr = FALSE)
 #cleansing for sex and age
 tract_demog <- tract_demog %>% 
   select(GEO_ID, NAME, S0101_C01_001E, S0101_C03_001E, S0101_C05_001E, 
-         S0101_C01_032E, S0101_C02_022E, S0101_C01_002E, S0101_C01_003E,
+         S0101_C01_032E, S0101_C01_022E, S0101_C01_002E, S0101_C01_003E,
          S0101_C01_004E, S0101_C01_005E, S0101_C01_006E, S0101_C01_007E,
          S0101_C01_008E, S0101_C01_009E, S0101_C01_010E, S0101_C01_011E,
          S0101_C01_012E, S0101_C01_013E, S0101_C01_014E, S0101_C01_030E) #selecting important information
@@ -68,13 +68,13 @@ tract_demog <- tract_demog[-1, ] #removing first row
     str(tract_demog, give.attr = FALSE)
     
     tract_demog <- tract_demog %>%
-      mutate(age_0to64 = select(., under5:age60to64) %>% rowSums(na.rm = TRUE))
+      mutate(age_0to64 = select(., under5:age60to64) %>% rowSums(na.rm = TRUE)) #calculating sum of age 0 to 64
     
     age_0to64 <- c("age_0to64")
     age_under18 <- c("under18")
     
     tract_demog <- tract_demog %>%
-      mutate(age_18to64 = .data[[age_0to64]] - .data[[age_under18]])
+      mutate(age_18to64 = .data[[age_0to64]] - .data[[age_under18]]) #subtracting to get sum of age 18-64
     
     tract_demog <- tract_demog %>%
       select(GEO_ID, NAME, total, male, female, median_age, under18, age_18to64, over64)
@@ -82,7 +82,7 @@ tract_demog <- tract_demog[-1, ] #removing first row
     save(list = "tract_demog", file = "tract_demog_clean.RData")
 
 rm(age_0to64, age_under18)
-    
+        
 
 #cleansing for income
 tract_income <- tract_income %>% 
