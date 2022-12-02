@@ -154,6 +154,8 @@ uhi_us_census <- uhi_us %>%
 #rm(tract_race)
 #rm(uhi_us)
 #rm(uhi_us_census)
+#rm(tract_demog_income)
+#rm(tract_demog_income_race)
 
 #loading data
 load("tract_demog_clean.RData")
@@ -212,3 +214,14 @@ save(list = "tract_demog_income_race", file = "tract_democ_income_race_clean.RDa
 
 ################################################################################
 #DATA CONCLUSION
+
+
+
+#write down the regression function
+#likely we will have several groups
+
+#scatterplot each of this thing, and make it in one slide
+#put it in a grid, look at how to arrange plot
+
+#think how to put in my model
+#Splitting th income, race, and sex
