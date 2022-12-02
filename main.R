@@ -92,6 +92,10 @@ colnames(tract_income) <- c("GEO_ID", "NAME", "mean_inc_percap", "mean_inc_fam")
 
 tract_income <- tract_income[-1, ] #removing first row
 
+sapply(tract_income, mode)
+tract_income[, c(3:5)] <- sapply(tract_demog[, c(3:5)], as.numeric) #converting as numeric
+str(tract_income, give.attr = FALSE)
+
 tract_income <- tract_income %>% 
   mutate(census_geoid = substr(GEO_ID, 10, 20)) #converting the number to 11 digit only
 
