@@ -103,10 +103,10 @@ tract_race <- tract_race %>%
   select(GEO_ID, NAME, B02001_001E, B02001_002E, B02001_003E, B02001_004E, B02001_005E, B02001_006E,
          B02001_007E, B02001_008E, B02001_009E, B02001_010E) #selecting important information
 
-colnames(tract_race) <- c("GEO_ID", "NAME", "total", "white", "black or african american", "american indian and alaska native",
-                          "asian", "native hawaiian and other pacific islander", "some other race",
-                          "two or more races", "two races including some other race",
-                          "two races excluding some other race, and three or more races")
+colnames(tract_race) <- c("GEO_ID", "NAME", "total", "white", "black_or_african_american", "american_indian_and_alaska_native",
+                          "asian", "native_hawaiian_and_other_pacific_islander", "some_other_race",
+                          "two_or_more_races", "two_races_including_some_other_race",
+                          "two_races_excluding_some_other_race_and_three_or_more_races")
 
 tract_race <- tract_race[-1, ] #removing first row
 
@@ -134,15 +134,56 @@ uhi_us <- uhi_us %>%
 
 nchar(uhi_us$census_geoid) #checking the digit
 
-uhi_us <- uhi_us %>%
-  mutate(census_geoid = as.numeric(census_geoid))
-
 class(uhi_us$census_geoid)
 
 save(list = "uhi_us", file = "uhi_us_clean.RData")
 
-#joining UHI with age, sex, income, and race
+uhi_us_census <- uhi_us %>%
+  select(census_geoid)
 
+#removing previous data
+#rm(meta_demog)
+#rm(meta_income)
+#rm(meta_race)
+#rm(tract_demog)
+#rm(tract_income)
+#rm(tract_race)
+#rm(uhi_us)
+#rm(uhi_us_census)
+
+#loading data
+load("tract_demog_clean.RData")
+load("tract_income_clean.RData")
+load("tract_race_clean.RData")
+load("uhi_us_clean.RData")
+
+#joining tract_demog and tract_income (age, sex, and income)
+str(tract_demog, give.attr = FALSE)
+str(tract_income, give.attr = FALSE)
+tract_income <- tract_income %>%
+  select(-NAME) #excluding name
+tract_demog_income <- full_join(tract_demog,tract_income, by = "GEO_ID")
+
+#joining tract_demog_income and tract_race
+str(tract_demog_income, give.attr = FALSE)
+str(tract_race, give.attr = FALSE)
+
+tract_race <- tract_race %>%
+  mutate(total = as.numeric(total),
+         white = as.numeric(white),
+         black_or_african_american = as.numeric(black_or_african_american),
+         american_indian_and_alaska_native = as.numeric(american_indian_and_alaska_native),
+         asian = as.numeric(asian),
+         native_hawaiian_and_other_pacific_islander = as.numeric(native_hawaiian_and_other_pacific_islander),
+         some_other_race = as.numeric(some_other_race),
+         two_or_more_races = as.numeric(two_or_more_races),
+         two_races_including_some_other_race = as.numeric(two_races_including_some_other_race),
+         two_races_excluding_some_other_race_and_three_or_more_races = as.numeric(two_races_excluding_some_other_race_and_three_or_more_races))
+
+tract_demog_income_race <- full_join(tract_demog_income, tract_race, by = c("census_geoid", "GEO_ID", "NAME", "total"))
+
+save(list = "tract_demog_income", file = "tract_democ_income_clean.RData")
+save(list = "tract_demog_income_race", file = "tract_democ_income_race_clean.RData")
 
 ################################################################################
 #DATA EXPLORATORY
