@@ -79,9 +79,6 @@ tract_demog <- tract_demog[-1, ] #removing first row
     tract_demog <- tract_demog %>%
       select(GEO_ID, NAME, total, male, female, median_age, under18, age_18to64, over64)
     
-    tract_demog <- tract_demog %>% 
-      mutate(census_geoid = substr(GEO_ID, 10, 20)) #converting the number to 11 digit only
-
     save(list = "tract_demog", file = "tract_demog_clean.RData")
 
 rm(age_0to64, age_under18)
