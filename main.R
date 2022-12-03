@@ -23,6 +23,10 @@ uhi_us <- read_csv("Census_UHI_US_Urbanized_recalculated.csv")
 tract_income <- read_csv("ACSST5Y2017.S1902-Data.csv") #real data
 meta_income <- read_csv("ACSST5Y2017.S1902-Column-Metadata.csv") #meta data
 
+#poverty data
+tract_poverty <- read_csv("ACSST5Y2017.S1701-Data.csv") #real data
+meta_poverty <- read_csv("ACSST5Y2017.S1701-Column-Metadata.csv") #meta data
+
 #demographic data
 tract_demog <- read_csv("ACSST5Y2017.S0101-Data.csv") #real data
 meta_demog <- read_csv("ACSST5Y2017.S0101-Column-Metadata.csv") #meta data
@@ -38,6 +42,9 @@ str(uhi_us, give.attr = FALSE)
 
 #tract income
 str(tract_income, give.attr = FALSE)
+
+#tract poverty
+str(tract_poverty, give.attr = FALSE)
 
 #tract demographic
 str(tract_demog, give.attr = FALSE)
@@ -93,13 +100,33 @@ colnames(tract_income) <- c("GEO_ID", "NAME", "mean_inc_percap", "mean_inc_fam")
 tract_income <- tract_income[-1, ] #removing first row
 
 sapply(tract_income, mode)
-tract_income[, c(3:4)] <- sapply(tract_demog[, c(3:4)], as.numeric) #converting as numeric
+tract_income[, c(3:4)] <- sapply(tract_income[, c(3:4)], as.numeric) #converting as numeric
 str(tract_income, give.attr = FALSE)
 
 tract_income <- tract_income %>% 
   mutate(census_geoid = substr(GEO_ID, 10, 20)) #converting the number to 11 digit only
 
 save(list = "tract_income", file = "tract_income_clean.RData")
+
+
+#cleansing for poverty
+tract_poverty <- tract_poverty %>% 
+  select(GEO_ID, NAME, S1701_C02_001E, S1701_C02_011E, S1701_C02_012E, 
+         S1701_C03_001E, S1701_C03_011E, S1701_C03_012E) #selecting important information
+
+colnames(tract_poverty) <- c("GEO_ID", "NAME", "povt", "povt_male", "povt_female",
+                            "povt_rate", "povt_rate_male", "povt_rate_female")
+
+tract_poverty <- tract_poverty[-1, ] #removing first row
+
+sapply(tract_poverty, mode)
+tract_poverty[, c(3:8)] <- sapply(tract_poverty[, c(3:8)], as.numeric) #converting as numeric
+str(tract_poverty, give.attr = FALSE)
+
+tract_poverty <- tract_poverty %>% 
+  mutate(census_geoid = substr(GEO_ID, 10, 20)) #converting the number to 11 digit only
+
+save(list = "tract_poverty", file = "tract_poverty_clean.RData")
 
 
 #cleansing for race
@@ -151,6 +178,7 @@ uhi_us_census <- uhi_us %>%
 #rm(meta_race)
 #rm(tract_demog)
 #rm(tract_income)
+#rm(tract_poverty)
 #rm(tract_race)
 #rm(uhi_us)
 #rm(uhi_us_census)
@@ -160,6 +188,7 @@ uhi_us_census <- uhi_us %>%
 #loading data
 load("tract_demog_clean.RData")
 load("tract_income_clean.RData")
+load("tract_poverty_clean.RData")
 load("tract_race_clean.RData")
 load("uhi_us_clean.RData")
 
