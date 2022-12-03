@@ -224,6 +224,30 @@ save(list = "tract_demog_income_race", file = "tract_democ_income_race_clean.RDa
 #DATA EXPLORATORY
 
 #Creating a table between UHI and demographic + socioeconomic
+#Aggregate to tract-level observations and show a table with the top 20 tracts by UHI
+  #including information for each tracts: census_geoid, name, total population, 
+  #high population, %female, %over64, high income tract, and high poverty tract
+    summary(uhi_ndvi_tract, give.attr = FALSE)
+    uhi_demog_sec_stat <- na.omit(uhi_ndvi_tract) #remove missing values
+    uhi_demog_sec_stat <- subset(uhi_demog_sec_stat,UHI_summer_day >= 0)
+    summary(uhi_demog_sec_stat, give.attr = FALSE)
+    
+    uhi_demog_sec_stat <- uhi_demog_sec_stat %>% 
+      select(census_geoid, NAME, total, UHI_summer_day) %>% 
+      mutate(highpop = as.numeric(uhi_demog_sec_stat$total > median(uhi_demog_sec_stat$total)),
+             share_fem = round((uhi_demog_sec_stat$female/total), 2),
+             share_old = round((uhi_demog_sec_stat$over64/total),2),
+             highinc = as.numeric(uhi_demog_sec_stat$mean_inc_fam > median(uhi_demog_sec_stat$mean_inc_fam)),
+             highpovt = as.numeric(uhi_demog_sec_stat$povt >= median(uhi_demog_sec_stat$povt))) %>%
+      mutate(highpop = factor(highpop, levels = c(0,1), 
+                              labels = c("Low pop", "High pop")),
+             highinc = factor(highinc, levels = c(0,1), 
+                              labels = c("Low inc", "High inc")),
+             highpovt = factor(highpovt, levels = c(0,1), 
+                               labels = c("Low poverty", "High poverty"))) %>% 
+      arrange(-uhi_demog_sec_stat$UHI_summer_day)
+    head(uhi_demog_sec_stat, n = 20)
+    knitr::kable(head(uhi_demog_sec_stat, n = 20))
 
 ################################################################################
 #DATA ANALYSIS
