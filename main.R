@@ -249,6 +249,106 @@ save(list = "tract_demog_income_race", file = "tract_democ_income_race_clean.RDa
     head(uhi_demog_sec_stat, n = 20)
     knitr::kable(head(uhi_demog_sec_stat, n = 20))
 
+#Show table summary statistics for categories of interest
+    summary(uhi_demog_sec_stat$share_fem)
+    summary(uhi_demog_sec_stat$share_old)
+    
+#Explore data with continuous (UHI) and categorical variables (Race, Poverty, Population, Sex, Age)
+    #Visualize the distribution of UHI by race at top 15 tracts by UHI
+      uhi_race_long <- na.omit(uhi_ndvi_tract) #remove missing values
+      uhi_race_long <- subset(uhi_race_long,UHI_summer_day >= 0)
+      uhi_race_long <- uhi_race_long %>% 
+        select(census_geoid, UHI_summer_day,total, white, black_or_african_american, american_indian_and_alaska_native, 
+               asian, native_hawaiian_and_other_pacific_islander, some_other_race)%>% 
+        arrange(-uhi_race_long$UHI_summer_day)
+      summary(uhi_race_long)
+      uhi_race_long_top <- uhi_race_long %>% 
+        slice_head(n = 20)
+      summary(uhi_race_long_top)
+      knitr::kable(uhi_race_long_top)
+      
+      uhi_race_long_top <- gather(uhi_race_long_top, race, n_race, white:some_other_race,factor_key=TRUE) # Converting data from wide to long format
+      uhi_race_long_top <- uhi_race_long_top[order(-uhi_race_long_top$UHI_summer_day, uhi_race_long_top$census_geoid), ]
+      head(uhi_race_long_top, n=20)
+
+      ggplot(uhi_race_long_top,
+             aes(x = reorder(census_geoid,-UHI_summer_day),
+                 y = n_race, fill = race)) +
+        geom_bar(stat = "identity") +
+        theme(legend.position = "right",
+              axis.text.x = element_text(angle = 90,
+                                         vjust = 0.5,
+                                         hjust = 1))  +
+        xlab("Top 20 tracts with highest UHI") +
+        ylab("Total population") +
+        scale_fill_discrete(name = "Race") +
+        ggtitle("Distribution of UHI by race",
+                subtitle = "At top 20 tracts accross the US")
+      
+    #Test the significance of difference in mean UHI between categories
+      #t-test between UHI and high poverty
+        uhi_demog_sec_stat %>% 
+          ungroup() %>% 
+          group_by(highpovt) %>% 
+          summarise(n = n(),
+                    mean_pov = mean(uhi_ndvi_tract_clean$povt),
+                    mean_UHI = mean(UHI_summer_day),
+                    min_UHI = min(UHI_summer_day),
+                    max_UHI = max(UHI_summer_day))
+        t.test(uhi_demog_sec_stat$UHI_summer_day ~ uhi_demog_sec_stat$highpovt, data = uhi_demog_sec_stat, var.equal = FALSE)
+      
+      #t-test between UHI and high population
+        uhi_demog_sec_stat %>% 
+          ungroup() %>% 
+          group_by(highpop) %>% 
+          summarise(n = n(),
+                    mean_pop = mean(uhi_ndvi_tract_clean$total),
+                    mean_UHI = mean(UHI_summer_day),
+                    min_UHI = min(UHI_summer_day),
+                    max_UHI = max(UHI_summer_day))
+        t.test(uhi_demog_sec_stat$UHI_summer_day ~ uhi_demog_sec_stat$highpop, data = uhi_demog_sec_stat, var.equal = FALSE) 
+    
+      #t-test between UHI and female share above the share of 3rd quartile
+        summary(uhi_demog_sec_stat$share_fem)
+        uhi_demog_sec_stat <- uhi_demog_sec_stat %>% 
+          mutate(highfemshare = as.numeric(uhi_demog_sec_stat$share_fem > summary(uhi_demog_sec_stat$share_fem)[5])) %>%
+          mutate(highfemshare = factor(highfemshare, levels = c(0,1), 
+                                  labels = c("Low female", "High female"))) %>% 
+          arrange(-uhi_demog_sec_stat$UHI_summer_day)
+        head(uhi_demog_sec_stat, n = 20)
+        
+        uhi_demog_sec_stat %>% 
+          ungroup() %>% 
+          group_by(highfemshare) %>% 
+          summarise(n = n(),
+                    mean_femshare = mean(uhi_demog_sec_stat$share_fem),
+                    mean_UHI = mean(UHI_summer_day),
+                    min_UHI = min(UHI_summer_day),
+                    max_UHI = max(UHI_summer_day))
+        t.test(uhi_demog_sec_stat$UHI_summer_day ~ uhi_demog_sec_stat$highfemshare, data = uhi_demog_sec_stat, var.equal = FALSE)
+        
+        
+      #t-test between UHI and old age share above the share of 3rd quartile
+        summary(uhi_demog_sec_stat$share_old)
+        uhi_demog_sec_stat <- uhi_demog_sec_stat %>% 
+          mutate(higholdshare = as.numeric(uhi_demog_sec_stat$share_old > summary(uhi_demog_sec_stat$share_old)[5])) %>%
+          mutate(higholdshare = factor(higholdshare, levels = c(0,1), 
+                                       labels = c("Low old", "High old"))) %>% 
+          arrange(-uhi_demog_sec_stat$UHI_summer_day)
+        head(uhi_demog_sec_stat, n = 20)
+        
+        uhi_demog_sec_stat %>% 
+          ungroup() %>% 
+          group_by(higholdshare) %>% 
+          summarise(n = n(),
+                    mean_oldshare = mean(uhi_demog_sec_stat$share_old),
+                    mean_UHI = mean(UHI_summer_day),
+                    min_UHI = min(UHI_summer_day),
+                    max_UHI = max(UHI_summer_day))
+        t.test(uhi_demog_sec_stat$UHI_summer_day ~ uhi_demog_sec_stat$higholdshare, data = uhi_demog_sec_stat, var.equal = FALSE)
+
+    #Visualize distribution of mean UHI by high/low categories using geom_freqpoly
+
 ################################################################################
 #DATA ANALYSIS
 
