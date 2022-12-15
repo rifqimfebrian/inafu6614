@@ -1,0 +1,151 @@
+---
+title: "Disproportionate exposure to Urban Heat Island in US Major Cities"
+author: Agastia Cestyakara (ac4973) and Muhammad Rifqi Febrian (mrf2174)
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  pdf_document:
+    keep_tex: false
+    fig_caption: true
+    latex_engine: pdflatex
+header-includes:
+  -  \usepackage{hyperref}
+  - \usepackage{placeins}
+biblio-style: apsr
+geometry: margin=1in
+fontfamily: mathpazo
+fontsize: 11pt
+# spacing: double
+endnote: no
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      message=FALSE, warning=FALSE, echo=FALSE,
+                      fig.path='figs/',
+                      cache.path = '_cache/',
+                      fig.process = function(x) {
+                      x2 = sub('-\\d+([.][a-z]+)$', '\\1', x)
+                      if (file.rename(x, x2)) x2 else x
+                      })
+```
+
+
+```{r libraries}
+library(tidyverse)
+library(stargazer)
+library(kableExtra)
+```
+
+```{r load}
+load("report_template.RData")
+```
+
+# 1. Introduction
+
+Clearly state your research questions. Motivate your study and describe the policy context. 
+
+You are by no means required to use the same section organization included in this template, this is just one approach to help you structure your reports.
+
+
+# 2. Background
+
+More policy background here (if necessary, otherwise fold into Section 1). 
+
+
+## 2.1 A subsection, if appropriate
+
+
+
+# 3. Data description
+
+Describe data sources, the population represented in your analysis, and any other context the reader should know about the data as it pertains to the analysis you do. More details can be included in a data appendix if necessary -- see [here](https://www.cssny.org/pages/false-narrative-data) for an example.
+
+
+# 4. Descriptive statistics
+
+\FloatBarrier
+
+Describe the distribution of the key variables you’re analyzing. Focus mostly on your treatment or policy variable(s) of interest (X) and how they vary across relevant groups and/or time, as well as your outcome(s) of interest and any key covariates that need to be accounted for. 
+
+You'll probably want to include difference-in-means tables or plots, and/or time series plots of key variables (by subgroups, when appropriate), like the below example:
+
+```{r sumstats}
+vf_diff %>% kable(align = "l",
+                  caption = "Your Title Here",
+                  booktabs = TRUE,
+                  col.names = c("Variable", 
+                                "Mean (Java)", 
+                                "N (Java)", 
+                                "Mean (Sulawesi)", 
+                                "N (Sulawesi)", 
+                                "p-value")) %>% 
+            kable_styling(latex_options=c("scale_down",
+                                          "hold_position",
+                                          "striped"))
+```
+
+
+\medspace 
+
+You can also add notes with more documentation of any technical details.
+
+\medspace
+
+**A few extended formatting options:**
+
+- The latex marker **FloatBarrier** holds tables and graphs in a fixed position relative to your text. 
+- The **kableExtra** package gives you additional control over how your tables (kables) look when rendered into latex
+- If you are working with stargazer (e.g. to display regression output) make sure you use **results = "asis"** in your code chunk header
+
+\medspace \FloatBarrier
+
+```{r graph 1, fig.cap="Put your title here", fig.width=7, fig.height=4}
+ 
+ggplot(data = ym_race, 
+       aes(x = date, y = si_1000, group = black75)) + 
+  geom_line(aes(color = black75)) +
+  labs(x = "Date", y = "Shutoff rate per 1,000 residents",
+       color = 'Census tract racial composition') +
+  ggtitle("Tract racial composition vs. Shutoff rate")
+```
+
+Make sure X and Y are clearly labeled and the units are clear. 
+
+\FloatBarrier
+
+\newpage
+
+# 5. Empirical strategy
+
+Carefully describe the econometric methods you use and main regression specifications using clear and unambiguous notation.
+
+Please use Ed Discussion to share clarifying questions with your classmates and instructors.
+
+
+# 6. Findings
+
+Can be split into multiple sections if appropriate.
+
+This is a sample bulleted list:
+
+- Finding 1: I like R
+- Finding 2: Except on the days I don't
+- Finding 3: R is great
+
+# 7. Conclusion
+
+Summarize your key findings and policy implications of these findings. Discuss the limitations of your analysis and next steps.
+
+
+\newpage
+
+# 8. References
+
+
+\newpage
+
+# 9. Appendices
+
+Use appendices for more detailed data description, and supplementary tables or charts that provide supporting information that is useful but not central for the story you are telling with your data.
+
