@@ -1,5 +1,5 @@
 ---
-title: "Disproportionate exposure to Urban Heat Island in US Major Cities"
+title: "Disproportionate exposure to Urban Heat Island"
 author: Agastia Cestyakara (ac4973) and Muhammad Rifqi Febrian (mrf2174)
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
@@ -47,22 +47,63 @@ Clearly state your research questions. Motivate your study and describe the poli
 
 You are by no means required to use the same section organization included in this template, this is just one approach to help you structure your reports.
 
+1. Apakah UHI memiliki exposure yang berbeda terhadap certain communities di US?
+2. Apakah tiap kota memiliki karakteristik exposure terhadap UHI yang sama? case NYC sama NH.
+3. Apakah NYC cooling initiative works? 
+
 
 # 2. Background
 
 More policy background here (if necessary, otherwise fold into Section 1). 
 
 
-## 2.1 A subsection, if appropriate
+## 2.1 Disproportionate Exposure
 
+- Why targeting vulnerable communities matter?
+- Inter-city different of characteristic to exposure
+
+## 2.2 Cooling NYC initiatives
+
+- What is Cooling NYC initiatives?
+- How is it going so far?
 
 
 # 3. Data description
 
 Describe data sources, the population represented in your analysis, and any other context the reader should know about the data as it pertains to the analysis you do. More details can be included in a data appendix if necessary -- see [here](https://www.cssny.org/pages/false-narrative-data) for an example.
 
+## 3.1. Demographic Data
+
+- from ACS
+- highlight poverty, race, age, gender
+
+## 3.2. Urban Heat Island (UHI) Intensity
+
+- from Chakraborty CS.
+- What is UHII?
+
+## 3.3. Tree Census Data in 1995 and 2015
+
+- from NYC open data
+
+## 3.4. NYC control variable
+
+- from NYC open data
+- housing, building, energy
+
+## 3.4. Urban data
+
+- from 
 
 # 4. Descriptive statistics
+
+## 4.1. Exposure to UHI
+- Distribution of UHI (y) of demographic status (age, sex, race, poverty)
+- using plots and diff-in means
+
+## 4.2. NYC Cooling Initiative
+- Distribution of UHI (y) of tree progress (x)
+- using plots and diff-in means
 
 \FloatBarrier
 
@@ -122,6 +163,10 @@ Carefully describe the econometric methods you use and main regression specifica
 
 Please use Ed Discussion to share clarifying questions with your classmates and instructors.
 
+## 5.1. Exposure to UHI in US major cities
+
+## 5.2. NYC cooling Initiatives
+
 
 # 6. Findings
 
@@ -132,6 +177,11 @@ This is a sample bulleted list:
 - Finding 1: I like R
 - Finding 2: Except on the days I don't
 - Finding 3: R is great
+
+## 6.1. Exposure to UHI in US major cities
+
+## 6.2. NYC Cooling Initiatives
+
 
 # 7. Conclusion
 
