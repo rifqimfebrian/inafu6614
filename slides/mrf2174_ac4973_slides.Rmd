@@ -1,0 +1,485 @@
+---
+title: "Disproportionate exposure to urban heat island intensity in the USA"
+author: Muhammad Rifqi Febrian (mrf2174), Agastia Cestyakara (ac4973)
+date: December 6, 2022
+output: 
+  ioslides_presentation: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{css, echo = FALSE}
+table, td, th {
+  border: none;
+  padding-left: 1em;
+  padding-right: 1em;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+```
+
+```{r}
+#load library
+library(tidyverse)
+library(forcats)
+library(fastDummies)
+library(SciViews)
+library(weights)
+library(lmtest)
+library(sandwich)
+library(Weighted.Desc.Stat)
+library(kableExtra)
+library(stargazer)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(tmap)
+library("spData")
+library("rgdal")
+library(patchwork)
+
+#load data
+load("uhindvitract.RData")
+```
+
+## Introduction {.build}
+<div>
+- Urban areas are usually warmer than the rural areas that surround them — Urban heat island
+</div>
+<div>
+- It could occurs because cities consume huge amounts of energy in electricity and fuel, have less vegetation to provide shade and cooling, and are built of materials that absorb and store heat
+</div>
+<div>
+- Heat exposure is associated with heat-related mortality, illness, and non-fatal health outcomes.
+</div>
+<div>
+- Urban heat islands (UHI) might disproportionately impact vulnerable communities (e.g., lower income communities, older people, and black communities)
+</div>
+<div>
+- Well-targeted interventions are needed to adapt and mitigate to the UHI effect
+</div>
+
+
+## Research questions {.build}
+<div><ol>
+<li>Is UHI intensity disproportionately affecting vulnerable communities? What type of communities are affected more by the UHI intensity?
+</li>
+<li>How vegetation index and digital elevation model affect UHI intensity?
+</li>
+</ol>
+
+
+## Data description {.smaller .build}
+<div>
+- **Urban Heat Island data**
+  + UHI = urban heat island (55,871 obs.)
+  + also use NDVI (vegetation index), LST (land surface temperature); DEM (digital elevation model)
+  + source: [Chakraborty, 2020](https://data.mendeley.com/datasets/x9mv4krnm2/3) (data.mendeley.com)
+</div>
+<div>
+- **Demographic data**
+  + age, sex, race at the census tract-level demographic data (74,001 obs)
+  + source: [American Community Survey, 2017](https://data.census.gov/table?q=age+&g=0100000US$1400000&y=2017&tid=ACSST5Y2017.S0101) (data.census.gov)
+</div>
+<div>
+- **Socioeconomic data**
+  + poverty rate (74,001 obs); source: [American Community Survey, 2017](https://data.census.gov/table?q=age+&g=0100000US$1400000&y=2017&tid=ACSST5Y2017.S0101) (data.census.gov)
+</div>
+<div>
+**Representative population:**
+
+- Unit of analysis: tracts by census id (42,183 obs.)
+
+- Population: all tract across US observed in 2017
+</div>
+
+
+## Descriptive Findings {.smaller .build}
+```{r preprocessing 1}
+boxplot_uhi_highpov <- uhindvitract %>%
+  select(UHI_summer_day, highpov) %>%
+  mutate(type = highpov)
+boxplot_uhi_shareblack <- uhindvitract %>%
+  select(UHI_summer_day, shareblack) %>%
+  mutate(type = shareblack)
+boxplot_uhi_sharefemale <- uhindvitract %>%
+  select(UHI_summer_day, sharefemale) %>%
+  mutate(type = sharefemale)
+boxplot_uhi_over64 <- uhindvitract %>%
+  select(UHI_summer_day, shareover64) %>%
+  mutate(type = shareover64)
+
+boxplot1 <- ggplot(boxplot_uhi_highpov) +
+  geom_boxplot(aes(x=highpov, y = UHI_summer_day)) +
+  ggtitle('UHI - Poverty rate')
+boxplot2 <- ggplot(boxplot_uhi_shareblack) +
+  geom_boxplot(aes(x=shareblack, y = UHI_summer_day)) +
+  ggtitle('UHI - Black share')
+boxplot3 <- ggplot(boxplot_uhi_sharefemale) +
+  geom_boxplot(aes(x=sharefemale, y = UHI_summer_day)) +
+  ggtitle('UHI - Female share')
+boxplot4 <- ggplot(boxplot_uhi_over64) +
+  geom_boxplot(aes(x=shareover64, y = UHI_summer_day)) +
+  ggtitle('UHI - Over 64 years share')
+```
+
+```{r output}
+boxplot1+boxplot2+boxplot3+boxplot4
+```
+
+## Descriptive Findings {.verysmaller .build}
+
+Some of the highest UHI intensity cities relatively have high **poverty rate** and high share of **black and female population**
+
+```{r preprocessing 2}
+#top 20 cities in terms of urban heat island intensity
+#cleanig urban data
+uhindviurban <- uhindvitract %>%
+  mutate(GEOID10 = Urban_geoid) %>%
+  mutate(GEOID10 = as.character(GEOID10)) %>%
+  mutate(GEOID10 = ifelse(nchar(GEOID10) == 3,
+                          gsub("^(.{0})(.*)$","\\100\\2", GEOID10),
+                          GEOID10)) %>%
+  mutate(GEOID10 = ifelse(nchar(GEOID10) == 4,
+                          gsub("^(.{0})(.*)$","\\10\\2", GEOID10),
+                          GEOID10))
+
+uhindviurban_picked <- uhindviurban %>%
+  select(Urban_name, Urban_name_extended, NDVI_urb_summer, total,
+         UHI_summer_day, DEM_urb, povt_rate, nblack, nfemale, nover64, GEOID10,
+         white, black_or_african_american, asian_nativehawaiaan_pacific_islander, other)
+
+urban_data <- uhindviurban_picked %>%
+  group_by(GEOID10, Urban_name, Urban_name_extended) %>%
+  summarise(total = sum(total),
+            white = sum(white),
+            black = sum(black_or_african_american),
+            asian_pacificislander = sum(asian_nativehawaiaan_pacific_islander),
+            other = sum(other),
+            UHI_mean = round(mean(UHI_summer_day),2),
+            NDVI_mean = round(mean(NDVI_urb_summer),2),
+            DEM_mean = round(mean(DEM_urb),2),
+            povt_rate = round(mean(povt_rate),2),
+            shareblack = round(mean(nblack),2),
+            sharefemale = round(mean(nfemale),2),
+            shareover64 = round(mean(nover64),2)) %>%
+  arrange(desc(UHI_mean))
+
+urban_data_20 <- urban_data %>%
+  ungroup() %>%
+  slice(1:20) %>%
+  select(Urban_name, total, UHI_mean, NDVI_mean,
+         DEM_mean, povt_rate, shareblack, sharefemale, shareover64)
+```
+
+```{r output2}
+urban_data_20 %>%
+  kbl(caption = "20 cities with highest UHI intensity") %>%
+  kable_classic_2(full_width = F) %>%
+  kable_styling(font_size = 12,latex_options = "scale_down")
+```
+
+## Descriptive Findings {.smaller}
+
+ <div>
+<small> There is a positive association between poverty rate and share of black population to exposure to UHI. Both of them are statistically significant at . </small>
+</div>
+
+<div>
+``` {r, echo = FALSE, results = 'markup', eval = TRUE, out.height=300, out.width=400}
+ggplot_povt_uhi <- ggplot(data = uhindvitract, aes(x=povt_rate, y=UHI_summer_day)) +
+  geom_point(aes(size = total)) +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  ggtitle('UHI_intensity ~ povt_rate') +
+  labs(x="poverty rate", y="Exposure to UHI intensity") +
+  theme(plot.title = element_text(size = 12),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        legend.position = "bottom",
+        legend.background = element_rect(color = "black", fill = "grey90", 
+                                         size = .2, linetype = "solid"), 
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 8), 
+        legend.title = element_text(size = 8))
+
+ggplot_black_uhi <- ggplot(data = uhindvitract, aes(x=nblack, y=UHI_summer_day)) +
+  geom_point(aes(size=total)) +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  ggtitle('UHI_exposure ~ shareblack') +
+  labs(x="Share of black population", y="Exposure to UHI intensity") +
+    theme(plot.title = element_text(size = 12),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        legend.position = "bottom",
+        legend.background = element_rect(color = "black", fill = "grey90", 
+                                         size = .2, linetype = "solid"), 
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 8), 
+        legend.title = element_text(size = 8))
+
+```
+</div>
+
+```{r output 2}
+ggplot_povt_uhi + ggplot_black_uhi
+```
+
+</div>
+
+
+## Descriptive Findings {.verysmaller .build}
+
+```{r preprocessing t1_uhi_twd}
+t1_uhi_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareblack),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareblack),
+         sum)
+
+t1_uhi_wtd_df <- as.data.frame(t1_uhi_wtd)
+
+t1_uhi_wtd_df <- t1_uhi_wtd_df %>%
+  mutate(diff = t1_uhi_wtd_df[,2] - t1_uhi_wtd_df[,1])
+
+new_row_t1 <- c(t1_uhi_wtd_df[2,1] - t1_uhi_wtd_df[1,1], t1_uhi_wtd_df[2,2] - t1_uhi_wtd_df[1,2], t1_uhi_wtd_df[2,3] - t1_uhi_wtd_df[1,3])
+t1_uhi_wtd_df <- rbind(t1_uhi_wtd_df, new_row_t1)
+rownames(t1_uhi_wtd_df) <- c("Not high poverty", "high poverty", "diff")
+```
+
+```{r output t1_uhi_wtd_df}
+kable_t1_uhi <- kable(t1_uhi_wtd_df) %>% 
+  kable_paper("hover", 
+              full_width = F, 
+              html_font = "Helvetica") %>% 
+  kable_styling(font_size = 12)
+```
+
+
+```{r preprocessing t1_uhifemalerace}
+t1_uhifemalerace_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$sharefemale),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$sharefemale),
+         sum)
+
+t1_uhifemalerace_df <- as.data.frame(t1_uhifemalerace_wtd)
+
+t1_uhifemalerace_df <- t1_uhifemalerace_df %>%
+  mutate(diff = t1_uhifemalerace_df[,2] - t1_uhifemalerace_df[,1])
+
+new_row_t1femalerace <- c(t1_uhifemalerace_df[2,1] - t1_uhifemalerace_df[1,1], t1_uhifemalerace_df[2,2] - t1_uhifemalerace_df[1,2], t1_uhifemalerace_df[2,3] - t1_uhifemalerace_df[1,3])
+t1_uhifemalerace_df <- rbind(t1_uhifemalerace_df, new_row_t1femalerace)
+rownames(t1_uhifemalerace_df) <- c("Majority non-Black", "Majority Black", "diff")
+```
+
+```{r output t1_female_race}
+kable_t1_female_race <- kable(t1_uhifemalerace_df) %>% 
+  kable_paper("hover", 
+              full_width = F, 
+              html_font = "Helvetica") %>% 
+  kable_styling(font_size = 12)
+```
+
+```{r preprocessing t1_uhiagerace}
+t1_uhiagerace_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$shareover64),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$shareover64),
+         sum)
+
+t1_uhiagerace_df <- as.data.frame(t1_uhiagerace_wtd)
+
+t1_uhiagerace_df <- t1_uhiagerace_df %>%
+  mutate(diff = t1_uhiagerace_df[,2] - t1_uhiagerace_df[,1])
+
+new_row_t1uhiagerace <- c(t1_uhiagerace_df[2,1] - t1_uhiagerace_df[1,1], t1_uhiagerace_df[2,2] - t1_uhiagerace_df[1,2], t1_uhiagerace_df[2,3] - t1_uhiagerace_df[1,3])
+t1_uhiagerace_df <- rbind(t1_uhiagerace_df, new_row_t1uhiagerace)
+rownames(t1_uhiagerace_df) <- c("Majority non-Black", "Majority Black", "diff")
+```
+
+```{r output t1_uhiagerace_df }
+kable_t1_agerace <- kable(t1_uhiagerace_df) %>% 
+  kable_paper("hover", 
+              full_width = F, 
+              html_font = "Helvetica",
+              ) %>% 
+  kable_styling(font_size = 12)
+```
+
+```{r output kable diff-in-diff}
+kable_t1_uhi
+kable_t1_agerace
+kable_t1_female_race
+```
+
+</div>
+
+## Regression {.smaller}
+<div>
+<font size = "4">
+
+$$
+\begin{multline*}
+uhiexp = \beta_{0} + \beta_{1}highpov + \beta_{2}shareblack + \beta_{3}sharefemale \\
++ \beta_{4}shareover64 + \beta_{5}highpov*shareblack + \beta_{6}highpov*sharefemale \\
++ \beta_{7}highpov*shareover64 + \beta_{8}shareblack*sharefemale \\
++ \beta_{9}shareblack*shareover64 + \beta_{10}sharefemale*shareover64 \\
++ \beta_{11}highpov*shareblack*sharefemale + \beta_{12}highpov*shareblack*shareover64 \\
++ \beta_{13}shareblack*sharefemale*shareover64 \\
++ \beta_{14}highpov*shareblack*sharefemale*shareover64 +\varepsilon
+\end{multline*}
+$$
+</font>
+</div>
+
+## Regression Result {.smaller}
+<font size = "0.25">
+```{r load rdata2}
+load("uhindvitract_2.RData")
+```
+
+```{r stargazer, results = 'asis'}
+se_robust <- function(x) 
+  coeftest(x, vcov = vcovHC(x, type = "HC1"))[,2]
+
+linear.1 <- lm(UHI_summer_day ~ highpov,
+               data = uhindvitract_2,
+               weights = total)
+linear.2 <- lm(UHI_summer_day ~ highpov + shareblack + highpov*shareblack,
+               data = uhindvitract_2, 
+               weights = total)
+linear.3 <- lm(UHI_summer_day ~ highpov + shareblack + sharefemale + highpov*shareblack + highpov*sharefemale +
+                 shareblack*sharefemale + highpov*shareblack*sharefemale,
+               data = uhindvitract_2,
+               weights = total)
+linear.4 <- lm(UHI_summer_day ~ highpov + shareblack + sharefemale + shareover64 +
+                 highpov*shareblack + highpov*sharefemale + highpov*shareover64 +
+                 shareblack*sharefemale + shareblack*shareover64 + sharefemale*shareover64 +
+                 highpov*shareblack*sharefemale + highpov*shareblack*shareover64 +
+                 shareblack*sharefemale*shareover64 + highpov*shareblack*sharefemale*shareover64,
+               data = uhindvitract_2,
+               weights = total)
+
+mdls1 <- list(linear.1, linear.2, linear.3, linear.4)
+se <- list(se_robust(linear.1), se_robust(linear.2),
+           se_robust(linear.3), se_robust(linear.4))
+          
+stargazer(mdls1, align= TRUE,
+          type = "html",
+          covariate.labels = c("highpov", "shareblack", "sharefemale", "shareover64",
+                               "highpov*shareblack", "highpov*sharefemale", "highpov*shareover64",
+                               "shareblack*sharefemale", "shareblack*shareover64", "sharefemale*shareover64",
+                               "highpov*shareblack*sharefemale", "highpov*shareblack*shareover64",
+                               "shareblack*sharefemale*shareover64", "highpov*shareblack*sharefemale*shareover64"),
+          single.row = TRUE,
+          se = se,
+          keep.stat = c("n", "adj.rsq"))
+```
+
+</font>
+
+## Regression 2 {.smaller}
+<div>
+<font size = "4">
+
+$$
+UHII = \beta_{0} + \beta_{1}NDVI + \beta_{2}DEM + \varepsilon
+$$
+</font>
+</div>
+
+<div>
+``` {r, echo = FALSE}
+ggplotndviudhi <- 
+  ggplot(uhindvitract, aes(x = NDVI_urb_summer, y = UHI_summer_day)) +
+  geom_point(aes(size = total))  +
+  geom_smooth(method = 'lm', formula = y ~ x) + 
+  ylab("Exposure to UHI intensity") + xlab("Vegetation index") +
+  ggtitle("Exposure to UHI Intensity vs vegatation index", 
+          subtitle = "census tract (2017)") +
+  theme(legend.position = "bottom", 
+        legend.background = element_rect(color = "black", fill = "grey90", 
+                                         size = .2, linetype = "solid"), 
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 8), 
+        legend.title = element_text(size = 8))
+
+ggplotndviudhi
+```
+
+
+## Regression of UHI ~ NDVI + DEM {.smaller}
+```{r stargazer2, results = 'asis'}
+se_robust <- function(x) 
+  coeftest(x, vcov = vcovHC(x, type = "HC1"))[,2]
+
+linear.ndvi <- lm(UHI_summer_day ~ NDVI_urb_summer, data = uhindvitract, weights = total)
+linear.ndvi2 <- lm(UHI_summer_day ~ NDVI_urb_summer + DEM_urb, data = uhindvitract, 
+               weights = total)
+my_models_2 <- list(linear.ndvi, linear.ndvi2)
+se <- list(se_robust(linear.1), se_robust(linear.2))
+
+stargazer(my_models_2, align = TRUE,
+          title = "Results",
+          type = "html",
+          se = se,
+          keep.stat = c("n", "adj.rsq"))
+```
+## Findings {.smaller}
+<div>
+- There is an increase of **0.653** in a census tract with higher poverty, higher share of black population, higher female proportion, and higher older people (not statistically significant)
+</div>
+<div>
+- There is an increase of **0.146** in a census tract with higher poverty level, higher share of black population, and higher share of female (not statistically significant)
+<div>
+- There is an increase by **5.084** in census tract with higher share of black and older people, and an increase by **0.415** in a census tract with higher level of female and older people (statistically significant)
+</div>
+<div>
+- There is negative association between Urban heat island (UHI intensity) and vegetation index (NDVI)
+</div>
+<div>
+- City in New Orleans, New York, New Jersey, and Connecticut is cities with highest urban heat island intensity
+</div>
+
+## Mapping New Orleans
+
+```{r mapping1}
+
+load("neworleansuhi.RData")
+
+t1_no_2 <- tm_shape(neworleansuhi) + 
+  tm_polygons(c("UHI_summer_day", "nblack", "povt_rate", "nover64"))
+#  tm_facets(sync = TRUE, ncol = 2) # +
+#tm_symbols(col = "blue", size = "nblack", scale = 0.5)
+
+t1_no_2
+```
+
+## Mapping New Hampsire
+``` {r mapping2}
+load("nhct_uhi_map.RData")
+
+nhct_uhi = st_as_sf(nhct_uhi)
+t1_nh_2 <- tm_shape(nhct_uhi) + 
+  tm_polygons(c("UHI_summer_day", "nblack", "povt_rate", "nover64"))
+
+t1_nh_2
+```
+
+## Recommendation and limitation
+<div>
+- Even though we are able to generalize the effect of UHI to particular vulnerable communities, but the impact will be different in each cities, therefore, further detailed intra-city research is required.
+</div>
+<div>
+- Our UHI ~ NDVI and DEM regression might suffer from omitted variable bias, therefore further data collection is required to understand the causality between UHI and NDVI, for example, panel data.
+</div>
