@@ -1,0 +1,223 @@
+---
+title: "Disproportionate exposure to Urban Heat Island"
+author: Agastia Cestyakara (ac4973) and Muhammad Rifqi Febrian (mrf2174)
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  pdf_document:
+    keep_tex: false
+    fig_caption: true
+    latex_engine: pdflatex
+header-includes:
+  -  \usepackage{hyperref}
+  - \usepackage{placeins}
+biblio-style: apsr
+geometry: margin=1in
+fontfamily: mathpazo
+fontsize: 11pt
+# spacing: double
+endnote: no
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      message=FALSE, warning=FALSE, echo=FALSE,
+                      fig.path='figs/',
+                      cache.path = '_cache/',
+                      fig.process = function(x) {
+                      x2 = sub('-\\d+([.][a-z]+)$', '\\1', x)
+                      if (file.rename(x, x2)) x2 else x
+                      })
+```
+
+
+```{r libraries}
+library(tidyverse)
+library(stargazer)
+library(kableExtra)
+library(forcats)
+library(fastDummies)
+library(SciViews)
+library(weights)
+library(lmtest)
+library(sandwich)
+library(Weighted.Desc.Stat)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(tmap)
+library("spData")
+library("rgdal")
+library(patchwork)
+```
+
+
+# 1. Introduction
+
+In the United States, heat ranks as the leading cause of weather-related mortality, illness, and other non-fatal health outcomes (Laaidi et al., 2012). Previous research has shown this relationship over large metropolitan areas, where around 85% of the US population lives (Climate Central, 2021). For example, higher temperatures are observed in areas with tall buildings, high building density, limited green space, industrial land use, and anthropogenic heat sources. Many urban and suburban areas experience elevated temperatures compared to their outlying rural surroundings; this difference in land surface temperature is what constitutes an urban heat island (UHI).
+
+In addition, research has shown that UHI disproportionately impact vulnerable communities, especially low-income communities, the elderly, and children (Ward et al., 2016). However, many of the heat-related deaths are believed to be preventable via the implementation of appropriate mitigation measures (Hondula et al., 2012). Therefore in this study, we hope to learn the UHI phenomenon by focusing on two main research questions:  
+1. Does UHI intensity disproportionately affect vulnerable communities in all states across US? What type of communities are affected more by the UHI intensity?  
+2. Does every city have the same exposure characteristic to UHI (case study: New York and New Orleans)?
+
+# 2. Background
+## 2.1 Disproportionate Exposure
+
+Increasing trends of urbanization, demographic shifts with aging populations, and the projected rise in extreme heat-related events due to climate change may compound certain groups’ vulnerability to extreme heat in the future (IPCC, 2014). Groups that are historically vulnerable to extreme heat include elderly (age>=60) females (Uejio, C. K. et al, 2011), and factors related to high heat mortality risk also included the locally high surface temperatures, low socioeconomic status, high density residential zoning, and age (Hondula et al., 2012).
+
+Understanding where these disparities in heat exposure exist today may inform future efforts to design policy interventions and community-targeted adaptation strategy to ameliorate them. Also, a better understanding in characteristics between cities may also contribute to the forward-looking investment in reliable infrastructure that can withstand ongoing and future climate risks.
+
+- Why targeting vulnerable communities matter?
+- Inter-city different of characteristic to exposure
+
+## 2.2 Cooling NYC initiatives
+
+- What is Cooling NYC initiatives?
+- How is it going so far?
+
+
+# 3. Data description
+## 3.1. Demographic Data
+
+Our explanatory variables X consist of census tract-level demographic data containing number of populations by age, sex, and race (total of 74,001 observations). The data covers all states across US in 2017 which was obtained from the [American Community Survey](https://data.census.gov/table?q=age+&g=0100000US$1400000&y=2017&tid=ACSST5Y2017.S0101). Another explanatory variable is poverty rate in 2017 to represent socioeconomic condition across US (total of 74,001 observations), which was also obtained from the [American Community Survey](https://data.census.gov/table?q=poverty&g=0100000US$1400000&y=2017&tid=ACSST5Y2017.S1701). We divide age into 3 groups: age under 18; age from 18 to 64; and age over 64. We also divide races into 4 groups: White; Black or African American; Asian, Native Hawaiian, Pacific Islander, and Other.  
+
+
+## 3.2. Urban Heat Island (UHI) Intensity
+
+For our dependent variable Y, we use the tract-level UHI intensity data in 2017 from Chakraborty and Lee (2022) with total of 55,871 observations. UHI intensity is defined as the difference of land surface temperature (LST) between urban and suburban area. The data was collected in more than 9500 urban clusters using a simplified urban-extent algorithm (Chakraborty and Lee, 2019), which was obtained from the [US Surface Urban Heat Island database](https://data.mendeley.com/datasets/x9mv4krnm2/3).
+
+- from Chakraborty CS.
+- What is UHII?
+
+
+## 3.3. Tree Census Data in 1995 and 2015
+
+- from NYC open data
+
+## 3.4. NYC control variable
+
+- from NYC open data
+- housing, building, energy
+
+## 3.4. Urban data
+
+- from 
+
+Unit of observation are the census tracts identified by census id with total 42,183 observations (a lot of tract data are excluded as UHI intensity only limited to the tracts located in urban areas), while population is all tract across US observed in 2017.
+
+# 4. Descriptive statistics
+\FloatBarrier
+## 4.1. Exposure to UHI
+- Distribution of UHI (y) of demographic status (age, sex, race, poverty)
+- using plots and diff-in means
+```{r sumstats}
+load("clean_data/00_final_uhindvitract.RData")
+diff1 <- lm(UHI_summer_day ~ highpov, data = uhindvitract, weights = total)
+summary_diff1 <- summary(diff1)
+```
+\FloatBarrier
+From the literature study, we expect to see large disparity in UHI intensity exposure between high and low poverty areas (high poverty areas have poverty level above mean) which is aligned with our t-statistic test that results in high difference of UHI exposure = **`r summary_diff1$coefficient[2,1]`** 
+
+Therefore, we will examine the difference in means of UHI intensity to the race, age, and sex groups, all between the high and poverty level area.
+
+**Examine the difference in means of UHI exposure in high and low poverty area**
+```{r}
+load("clean_data/00_final_uhindvitract.RData")
+t1_uhi_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareblack),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareblack),
+         sum)
+
+t1_uhi_wtd %>% kable(align = "l",
+                  caption = "Difference in means of UHI exposure between Black and Non-Black Areas",
+                  booktabs = TRUE,
+                  col.names = c("Majority non-Black", 
+                                "Majority Black")) %>% 
+            kable_styling(font_size = 7,
+                          latex_options=c("scale_down",
+                                          "hold_position",
+                                          "striped"))
+```
+
+
+**Examine the difference in means of UHI in majority black and non-black area**
+
+**Examine the difference in means of UHI in area with high and low aged people**
+
+
+## 4.2. NYC Cooling Initiative
+- Distribution of UHI (y) of tree progress (x)
+- using plots and diff-in means
+
+\FloatBarrier
+
+Describe the distribution of the key variables you’re analyzing. Focus mostly on your treatment or policy variable(s) of interest (X) and how they vary across relevant groups and/or time, as well as your outcome(s) of interest and any key covariates that need to be accounted for. 
+
+You'll probably want to include difference-in-means tables or plots, and/or time series plots of key variables (by subgroups, when appropriate), like the below example:
+
+
+
+\medspace 
+
+You can also add notes with more documentation of any technical details.
+
+\medspace
+
+**A few extended formatting options:**
+
+- The latex marker **FloatBarrier** holds tables and graphs in a fixed position relative to your text. 
+- The **kableExtra** package gives you additional control over how your tables (kables) look when rendered into latex
+- If you are working with stargazer (e.g. to display regression output) make sure you use **results = "asis"** in your code chunk header
+
+\medspace \FloatBarrier
+
+Make sure X and Y are clearly labeled and the units are clear. 
+
+\FloatBarrier
+
+\newpage
+
+# 5. Empirical strategy
+
+Carefully describe the econometric methods you use and main regression specifications using clear and unambiguous notation.
+
+Please use Ed Discussion to share clarifying questions with your classmates and instructors.
+
+## 5.1. Exposure to UHI in US major cities
+
+## 5.2. NYC cooling Initiatives
+
+
+# 6. Findings
+
+Can be split into multiple sections if appropriate.
+
+This is a sample bulleted list:
+
+- Finding 1: I like R
+- Finding 2: Except on the days I don't
+- Finding 3: R is great
+
+## 6.1. Exposure to UHI in US major cities
+
+## 6.2. NYC Cooling Initiatives
+
+
+# 7. Conclusion
+
+Summarize your key findings and policy implications of these findings. Discuss the limitations of your analysis and next steps.
+
+
+\newpage
+
+# 8. References
+
+
+\newpage
+
+# 9. Appendices
+## 
+Use appendices for more detailed data description, and supplementary tables or charts that provide supporting information that is useful but not central for the story you are telling with your data.
