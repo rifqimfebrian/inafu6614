@@ -1,0 +1,517 @@
+---
+title: "Disproportionate exposure to Urban Heat Island"
+author: "Agastia Cestyakara (ac4973) and Muhammad Rifqi Febrian (mrf2174)"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    keep_tex: no
+    fig_caption: yes
+    latex_engine: pdflatex
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{hyperref}
+- \usepackage{placeins}
+biblio-style: apsr
+geometry: margin=1in
+fontfamily: mathpazo
+fontsize: 11pt
+endnote: no
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      message=FALSE, warning=FALSE, echo=FALSE,
+                      fig.path='figs/',
+                      cache.path = '_cache/',
+                      fig.process = function(x) {
+                      x2 = sub('-\\d+([.][a-z]+)$', '\\1', x)
+                      if (file.rename(x, x2)) x2 else x
+                      })
+```
+
+
+```{r libraries}
+library(tidyverse)
+library(stargazer)
+library(kableExtra)
+library(forcats)
+library(fastDummies)
+library(SciViews)
+library(weights)
+library(lmtest)
+library(sandwich)
+library(Weighted.Desc.Stat)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(tmap)
+library("spData")
+library("rgdal")
+library(patchwork)
+```
+
+
+# 1. Introduction
+
+In the United States, heat ranks as the leading cause of weather-related mortality, illness, and other non-fatal health outcomes (Laaidi et al., 2012). Previous research has shown this relationship over large metropolitan areas, where around 85% of the US population lives (Climate Central, 2021). For example, higher temperatures are observed in areas with tall buildings, high building density, limited green space, industrial land use, and anthropogenic heat sources. Many urban and suburban areas experience elevated temperatures compared to their outlying rural surroundings; this difference in land surface temperature is what constitutes an urban heat island (UHI).
+
+In addition, research has shown that UHI disproportionately impact vulnerable communities, especially low-income communities, the elderly, and children (Ward et al., 2016). However, many of the heat-related deaths are believed to be preventable via the implementation of appropriate mitigation measures (Hondula et al., 2012). Therefore in this study, we hope to learn the UHI phenomenon by focusing on two main research questions:  
+
+1. Does UHI intensity disproportionately affect vulnerable communities in all states across US? What type of communities are affected more by the UHI intensity?  
+2. Does every city have the same exposure characteristic to UHI (case study: New York and New Orleans)?
+
+# 2. Background
+## 2.1 Disproportionate Exposure
+
+Increasing trends of urbanization, demographic shifts with aging populations, and the projected rise in extreme heat-related events due to climate change may compound certain groups’ vulnerability to extreme heat in the future (IPCC, 2014). Groups that are historically vulnerable to extreme heat include elderly (age>=60) females (Uejio, C. K. et al, 2011), and factors related to high heat mortality risk also included the locally high surface temperatures, low socioeconomic status, high density residential zoning, and age (Hondula et al., 2012).
+
+Understanding where these disparities in heat exposure exist today may inform future efforts to design policy interventions and community-targeted adaptation strategy to ameliorate them. Also, a better understanding in characteristics between cities may also contribute to the forward-looking investment in reliable infrastructure that can withstand ongoing and future climate risks.
+
+- Why targeting vulnerable communities matter?
+- Inter-city different of characteristic to exposure
+
+## 2.2 Cooling NYC initiatives
+
+- What is Cooling NYC initiatives?
+- How is it going so far?
+
+
+# 3. Data description
+## 3.1. Demographic Data
+
+Our explanatory variables X consist of census tract-level demographic data containing number of populations by age, sex, and race (total of 74,001 observations). The data covers all states across US in 2017 which was obtained from the [American Community Survey](https://data.census.gov/table?q=age+&g=0100000US$1400000&y=2017&tid=ACSST5Y2017.S0101). Another explanatory variable is poverty rate in 2017 to represent socioeconomic condition across US (total of 74,001 observations), which was also obtained from the [American Community Survey](https://data.census.gov/table?q=poverty&g=0100000US$1400000&y=2017&tid=ACSST5Y2017.S1701).
+
+
+## 3.2. Urban Heat Island (UHI) Intensity
+
+For our dependent variable Y, we use the tract-level UHI intensity data in 2017 from Chakraborty and Lee (2022) with total of 55,871 observations. UHI intensity is defined as the difference of land surface temperature (LST) between urban and suburban area. The data was collected in more than 9500 urban clusters using a simplified urban-extent algorithm (Chakraborty and Lee, 2019), which was obtained from the [US Surface Urban Heat Island database](https://data.mendeley.com/datasets/x9mv4krnm2/3).
+
+- from Chakraborty CS.
+- What is UHII?
+
+
+## 3.3. Tree Census Data in 1995 and 2015
+
+- from NYC open data
+
+## 3.4. NYC control variable
+
+- from NYC open data
+- housing, building, energy
+
+## 3.4. Urban data
+
+- from 
+
+Our unit of analysis are the census tracts located in urban areas, which are identified by census id with total 42,183 observations. The represented population is all tract across US observed in 2017 and we will exploit variation of UHI intensity in demographic composition across tracts in urban areas.
+
+# 4. Descriptive statistics
+\FloatBarrier
+## 4.1. Exposure to UHI
+- Distribution of UHI (y) of demographic status (age, sex, race, poverty)
+- using plots and diff-in means
+```{r sumstats}
+load("clean_data/00_final_uhindvitract.RData")
+
+diff1 <- lm(UHI_summer_day ~ highpov, data = uhindvitract, weights = total)
+summary_diff1 <- summary(diff1)
+
+diff2 <- lm(UHI_summer_day ~ shareblack, data = uhindvitract, weights = total)
+summary_diff2 <- summary(diff2)
+
+diff3 <- lm(UHI_summer_day ~ sharefemale, data = uhindvitract, weights = total)
+summary_diff3 <- summary(diff3)
+
+diff4 <- lm(UHI_summer_day ~ shareover64, data = uhindvitract, weights = total)
+summary_diff4 <- summary(diff4)
+```
+\FloatBarrier
+From the literature study, we expect to see large disparity of UHI intensity exposure in areas with different poverty level and share of black communities. 
+```{r}
+diff_uhi_dem = matrix(c(summary_diff1$coefficient[2,1], round(summary_diff1$coefficient[2,4],6),
+                        summary_diff2$coefficient[2,1], round(summary_diff2$coefficient[2,4],6),
+                        summary_diff3$coefficient[2,1], round(summary_diff3$coefficient[2,4],6),
+                        summary_diff4$coefficient[2,1], round(summary_diff4$coefficient[2,4],6)),
+                        ncol=2, byrow=TRUE)
+ 
+# specify the column names and row names of matrix
+colnames(diff_uhi_dem) <- c('diff-in-mean UHI','p-value')
+rownames(diff_uhi_dem) <- c('High and Low Poverty','High and Low Black Share','High and Low  Female Share','High and Low Age>64 Share')
+
+# assign to table
+tab_diff_uhi_dem = as.table(diff_uhi_dem)
+
+tab_diff_uhi_dem %>% kable(align = "l",
+                  caption = "Difference in means of UHI exposure to Demographic Groups",
+                  booktabs = TRUE,
+                  col.names = c('diff-in-mean UHI','p-value')) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 11,
+                          latex_options=c("hold_position",
+                                          "striped"))
+
+```
+
+Table 1 shows the coefficients resulted from bivariate linear regression between UHI and each of the demographic group. UHI exposure becomes higher in the area with higher black share (coefficient=**`r summary_diff2$coefficient[2,1]`**) as well as higher in the area with higher poverty level (coeffciient= **`r summary_diff1$coefficient[2,1]`**). Therefore, the results are aligned with the literature study as well as shown by our exploratory result using difference-in-means in Appendice 1.  
+
+Moreover, in Appendice 2 we also learn from the VIF score that our variables are not correlated to each other, such that they provide unique or independent information in the regression model. However, variable `sharefemale` is not statistically significant, in addition to the fact that variable `shareover64` are showing negative association to UHI exposure.  
+
+Based on these preliminary exploratory findings, the racial and poverty elements seem more important to analyse from a policy perspective, and thus we will focus our study to UHI exposure between poverty level and black share.
+
+Here's the scatterplot between UHI intensity and our  2 variables of interest:
+
+```{r}
+ggplot_povt_uhi <- ggplot(data = uhindvitract, aes(x=povt_rate, y=UHI_summer_day)) +
+  geom_point(aes(size = total)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  ggtitle('UHI_intensity ~ povt_rate') +
+  labs(x="poverty rate", y="Exposure to UHI intensity") +
+  theme(plot.title = element_text(size = 12),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        legend.position = "bottom",
+        legend.background = element_rect(color = "black", fill = "grey90", 
+                                         size = .2, linetype = "solid"), 
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 8), 
+        legend.title = element_text(size = 8))
+
+ggplot_black_uhi <- ggplot(data = uhindvitract, aes(x=nblack, y=UHI_summer_day)) +
+  geom_point(aes(size=total)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  ggtitle('UHI_exposure ~ shareblack') +
+  labs(x="Share of black population", y="Exposure to UHI intensity") +
+    theme(plot.title = element_text(size = 12),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        legend.position = "bottom",
+        legend.background = element_rect(color = "black", fill = "grey90", 
+                                         size = .2, linetype = "solid"), 
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 8), 
+        legend.title = element_text(size = 8))
+
+ggplot_povt_uhi + ggplot_black_uhi
+```
+
+There is a **positive association** between **poverty rate and share of black** population to exposure to UHI. Both of them are **statistically significant** at 95% confidence level. 
+
+
+## 4.2. NYC Cooling Initiative
+- Distribution of UHI (y) of tree progress (x)
+- using plots and diff-in means
+
+\FloatBarrier
+
+Describe the distribution of the key variables you’re analyzing. Focus mostly on your treatment or policy variable(s) of interest (X) and how they vary across relevant groups and/or time, as well as your outcome(s) of interest and any key covariates that need to be accounted for. 
+
+You'll probably want to include difference-in-means tables or plots, and/or time series plots of key variables (by subgroups, when appropriate), like the below example:
+
+
+
+\medspace 
+
+You can also add notes with more documentation of any technical details.
+
+\medspace
+
+**A few extended formatting options:**
+
+- The latex marker **FloatBarrier** holds tables and graphs in a fixed position relative to your text. 
+- The **kableExtra** package gives you additional control over how your tables (kables) look when rendered into latex
+- If you are working with stargazer (e.g. to display regression output) make sure you use **results = "asis"** in your code chunk header
+
+\medspace \FloatBarrier
+
+Make sure X and Y are clearly labeled and the units are clear. 
+
+\FloatBarrier
+
+\newpage
+
+# 5. Empirical strategy
+
+## 5.1. Exposure to UHI in US major cities
+
+### Main Regression Specification
+Based on our explanatory analysis, we want to observe the relationship between UHI intensity exposure to independent variables: 1) poverty level (univariate) 2)  share of black (univariate), and 3) poverty and black share with interaction; using  linear regression function.
+```{r stargazer, results = 'asis'}
+se_robust <- function(x) 
+  coeftest(x, vcov = vcovHC(x, type = "HC1"))[,2]
+
+linear.1 <- lm(UHI_summer_day ~ highpov, data = uhindvitract, weights = total)
+linear.2 <- lm(UHI_summer_day ~ shareblack, data = uhindvitract, weights = total)
+linear.3 <- lm(UHI_summer_day ~ highpov + shareblack + highpov*shareblack, data = uhindvitract, 
+               weights = total)
+```
+
+We will explain the relationship between UHI intensity exposure to demographic group based on racial and poverty composition, using the linear regression model with dependent variable `highpov` and `shareblack`. Our main regression specifications as follows:
+
+$$
+\begin{aligned}
+uhiexp = \beta_{0} + \beta_{1}highpov + \beta_{2}shareblack + \beta_{3}highpov*shareblack +\varepsilon
+\end{aligned}
+$$
+
+```{r}
+uhiexp <- lm(UHI_summer_day ~ highpov + shareblack + highpov*shareblack, 
+             data = uhindvitract, weights = total)
+summary(uhiexp)
+```
+
+
+### Data Preparation and Limitations
+**Data Preparation**
+We started with obtaining 3 different tract-level datasets for UHI, demography (age, sex, race), and poverty. First, we determine the group of analysis in each demographic that we want to analyse, for exapmple: we create dummy variable to divide age into 3 groups: age under 18; age from 18 to 64; and age over 64. We also create dummy variable to divide races into 4 groups: White; Black or African American; Asian, Native Hawaiian, Pacific Islander, and Other. Then, we cleaned the data separately to prepare for joining all three datasets based on the GEO_ID. 
+
+After we joined as one dataframe, we started to performed exploratory data analysis for every variable and ended up with 2 variables of interest as explained in Chapter 4.1. Some limitiations in our data are as follows:
+
+- UHI intensity data is only available for 2017, therefore we could not analyse treatment effects to the variation of UHI across time periods
+
+- Even though we are able to generalize the effect of UHI to particular vulnerable communities, but the impact will be different in each cities, therefore, further detailed intra-city research is required.
+
+
+## 5.2. NYC cooling Initiatives
+
+
+
+
+# 6. Findings
+
+## 6.1. Exposure to UHI in US major cities
+Our main multivariate regression specifications resulted in some takeaways as follows:  
+
+- There is a positive relationship between UHI intensity and high poverty level, as well as between UHI intensity and high black share. The associations are as follow:
+  + On average, there is a `r round((summary(linear.3)$coefficient[2,1]),3)` unit increase of UHI intensity for every unit increase in poverty level  (statistically significant). 
+  + On average, there is a `r round((summary(linear.3)$coefficient[3,1]),3)` unit increase of UHI intensity for every unit increase in share of black community. Therefore, UHI exposure  elevation is observed more in the disparities based on tracts racial composition  (statistically significant).
+  + On the other hand, the interaction terms between `highpov` and `shareblack` has a negative effect to UHI intensity with coefficient = `r round((summary(linear.3)$coefficient[4,1]),3)`  (statistically significant). This is an interesting findings as we expected based on the t-test statistic that areas with majority black and high poverty level has the highest exposure to UHI intensity.
+
+## 6.2. NYC Cooling Initiatives
+
+
+# 7. Conclusion
+
+
+
+
+\newpage
+
+# 8. References
+
+
+\newpage
+
+# 9. Appendices
+## Appendice 1
+**Weighted difference in means of UHI exposure between Poverty level and Black share**  
+Difference in means of UHI exposure between Black and Non-Black Areas   
+
+- Findings: The highest exposure is found in tracts with high poverty level and high black share.
+
+```{r}
+t1_uhi_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareblack),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareblack),
+         sum)
+
+t1_uhi_wtd_df <- as.data.frame(t1_uhi_wtd)
+
+t1_uhi_wtd_df <- t1_uhi_wtd_df %>%
+  mutate(diff = t1_uhi_wtd_df[,2] - t1_uhi_wtd_df[,1])
+
+new_row_t1 <- c(t1_uhi_wtd_df[2,1] - t1_uhi_wtd_df[1,1], t1_uhi_wtd_df[2,2] - t1_uhi_wtd_df[1,2], t1_uhi_wtd_df[2,3] - t1_uhi_wtd_df[1,3])
+t1_uhi_wtd_df <- rbind(t1_uhi_wtd_df, new_row_t1)
+rownames(t1_uhi_wtd_df) <- c("Not high poverty", "High poverty", "diff")
+
+t1_uhi_wtd_df %>% kable(align = "l",
+                  booktabs = TRUE,
+                  col.names = c("Majority non-Black", "Majority Black","diff")) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 9,
+                          latex_options=c("hold_position",
+                                          "striped"))
+```
+
+
+
+**Weighted difference in means of UHI exposure variation in old age tracts**   
+Difference in means of UHI exposure between poverty level and old age composition   
+
+- Findings: Higher UHI exposure is found in tracts with high poverty, where tracts with high share of old people have lower UHI exposure
+
+```{r}
+#Weighted difference in mean uhi exposure of highpov and nover64
+t1_uhiagepov_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareover64),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$shareover64),
+         sum)
+
+t1_uhiagepov_df <- as.data.frame(t1_uhiagepov_wtd)
+
+t1_uhiagepov_df <- t1_uhiagepov_df %>%
+  mutate(diff = t1_uhiagepov_df[,2] - t1_uhiagepov_df[,1])
+
+new_row_t1uhiagepov <- c(t1_uhiagepov_df[2,1] - t1_uhiagepov_df[1,1], t1_uhiagepov_df[2,2] - t1_uhiagepov_df[1,2], t1_uhiagepov_df[2,3] - t1_uhiagepov_df[1,3])
+t1_uhiagepov_df <- rbind(t1_uhiagepov_df, new_row_t1uhiagepov)
+rownames(t1_uhiagepov_df) <- c("Not High Poverty", "High Poverty", "diff")
+
+t1_uhiagepov_df %>% kable(align = "l",
+                  booktabs = TRUE,
+                  col.names = c("Lower share of age>64", "Higher share of age>64", "diff")) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 9,
+                          latex_options=c("hold_position",
+                                          "striped"))
+```
+
+Difference in means of UHI exposure between black race and old age composition   
+
+- Findings: Higher UHI exposure is found in tracts wit majority black share with relatively higher share of people with age over 64. Tracts with high black composition consistently show higher  UHI exposure compared to non-black tracts.  
+
+```{r}
+t1_uhiagerace_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$shareover64),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$shareover64),
+         sum)
+
+t1_uhiagerace_df <- as.data.frame(t1_uhiagerace_wtd)
+
+t1_uhiagerace_df <- t1_uhiagerace_df %>%
+  mutate(diff = t1_uhiagerace_df[,2] - t1_uhiagerace_df[,1])
+
+new_row_t1uhiagerace <- c(t1_uhiagerace_df[2,1] - t1_uhiagerace_df[1,1], t1_uhiagerace_df[2,2] - t1_uhiagerace_df[1,2], t1_uhiagerace_df[2,3] - t1_uhiagerace_df[1,3])
+t1_uhiagerace_df <- rbind(t1_uhiagerace_df, new_row_t1uhiagerace)
+rownames(t1_uhiagerace_df) <- c("Majority non-Black", "Majority Black", "diff")
+
+
+t1_uhiagerace_df %>% kable(align = "l",
+                  booktabs = TRUE,
+                  col.names = c("Lower share of age>64", "Higher share of age>64", "diff")) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 9,
+                          latex_options=c("hold_position",
+                                          "striped"))
+```
+
+
+**Weighted difference in means of UHI exposure in area with high share of female**   
+Difference in means of UHI exposure between poverty level and female composition   
+
+- Findings: UHI exposure is slightly higher in area with high poverty and the female/male composition does not differ UHI exposure.
+
+```{r}
+t1_uhifemalepov_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$sharefemale),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$highpov, uhindvitract$sharefemale),
+         sum)
+
+t1_uhifemalepov_df <- as.data.frame(t1_uhifemalepov_wtd)
+
+t1_uhifemalepov_df <- t1_uhifemalepov_df %>%
+  mutate(diff = t1_uhifemalepov_df[,2] - t1_uhifemalepov_df[,1])
+
+new_row_t1femalepov <- c(t1_uhifemalepov_df[2,1] - t1_uhifemalepov_df[1,1], t1_uhifemalepov_df[2,2] - t1_uhifemalepov_df[1,2], t1_uhifemalepov_df[2,3] - t1_uhifemalepov_df[1,3])
+t1_uhifemalepov_df <- rbind(t1_uhifemalepov_df, new_row_t1femalepov)
+rownames(t1_uhifemalepov_df) <- c("Not high poverty", "High poverty", "diff")
+
+t1_uhifemalepov_df %>% kable(align = "l",
+                  booktabs = TRUE,
+                  col.names = c("Majority male", "Majority female", "diff")) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 9,
+                          latex_options=c("hold_position",
+                                          "striped"))
+```
+
+Difference in means of UHI exposure between racial and female composition    
+
+- Findings: UHI exposure is higher in area with high black share and the female/male composition does not differ UHI exposure.   
+
+```{r}
+t1_uhifemalerace_wtd <-
+  tapply(uhindvitract$UHI_summer_day * uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$sharefemale),
+         sum) / 
+  tapply(uhindvitract$total,
+         list(uhindvitract$shareblack, uhindvitract$sharefemale),
+         sum)
+
+t1_uhifemalerace_df <- as.data.frame(t1_uhifemalerace_wtd)
+
+t1_uhifemalerace_df <- t1_uhifemalerace_df %>%
+  mutate(diff = t1_uhifemalerace_df[,2] - t1_uhifemalerace_df[,1])
+
+new_row_t1femalerace <- c(t1_uhifemalerace_df[2,1] - t1_uhifemalerace_df[1,1], t1_uhifemalerace_df[2,2] - t1_uhifemalerace_df[1,2], t1_uhifemalerace_df[2,3] - t1_uhifemalerace_df[1,3])
+t1_uhifemalerace_df <- rbind(t1_uhifemalerace_df, new_row_t1femalerace)
+rownames(t1_uhifemalerace_df) <- c("Majority non-Black", "Majority Black", "diff")
+
+t1_uhifemalerace_df %>% kable(align = "l",
+                  booktabs = TRUE,
+                  col.names = c("Majority male", "Majority female", "diff")) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 9,
+                          latex_options=c("hold_position",
+                                          "striped"))
+
+```
+
+Therefore, from the difference-in-meeans outputs we can conclude that there is no evidence of UHI exposure disparities in old-age composition and female/male composition across tracts.
+
+## Appendice 2
+Here we want to test multicollinearity between predictor variables.
+```{r}
+#fit the regression model
+model <- lm(UHI_summer_day ~ highpov + shareblack + sharefemale + shareover64, data = uhindvitract)
+summary(model)
+```
+We can see from the regression output that the R-squared value for the model is `r summary(model)$r.squared`, and the corresponding p-value is `r anova(model)$'Pr(>F)'[1]`, which indicates that the overall regression model is significant.   
+
+The predictor variables `highpov`, `shareblack`, and `shareover64` are statistically significant at the 0.05 significance level, while `sharefemale` is not. In addition, variable `shareover64` show a negative coefficient which indicate lower UHI exposure in areas with high share of old people. Therefore, align with findings in Appendice 1, we might consider to exclude age (`shareover64`) and sex (`sharefemale`) in our regression model.
+
+Test for the strength and correlation of predictor variables in explaining the model (checking multicollinearity).
+
+```{r}
+#calculate the VIF for each predictor variable in the model
+vif_values <- vif(model)
+vif_values %>% kable(align = "l",
+                  caption = "VIF values",
+                  booktabs = TRUE) %>% 
+            kableExtra::kable_styling(full_width = F,  font_size = 12,
+                          latex_options=c("hold_position",
+                                          "striped"))
+
+#create horizontal bar chart to display each VIF value
+barplot(vif_values, main = "VIF Values", horiz = TRUE, col = "steelblue", xlim=c(0,2))
+
+#add vertical line at 2
+abline(v = 1.5, lwd=3, lty = 2)
+```
+
+The VIF values for all variables are around 1, which are not showing any sign of multicollinearity.
+
+## Appendice 3
+**Bivariate regression result between UHI and `highpov`**
+```{r}
+summary(linear.1)
+```
+
+
+**Bivariate regression result between UHI and `shareblack`**
+```{r}
+summary(linear.2)
+```
+
+**Main regression specification result between UHI and `shareblack`**
+```{r}
+summary(linear.3)
+```
